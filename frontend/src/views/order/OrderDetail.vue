@@ -13,7 +13,7 @@
       </div>
 
       <!-- Status Steps -->
-      <div class="order-detail__steps animate-fade-up">
+      <div class="order-detail__steps animate-fade-up" v-if="order.status !== 4">
         <div class="step" v-for="(step, i) in steps" :key="i" :class="{ active: i <= currentStep, done: i < currentStep }">
           <div class="step__dot">
             <svg v-if="i < currentStep" width="14" height="14" viewBox="0 0 16 16" fill="none">
@@ -23,6 +23,14 @@
           </div>
           <span class="step__label">{{ step }}</span>
         </div>
+      </div>
+      <div class="order-detail__cancelled animate-fade-up" v-else>
+        <div class="order-detail__cancelled-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+        </div>
+        <span>订单已取消</span>
       </div>
 
       <div class="order-detail__layout">
@@ -114,7 +122,7 @@ const currentStep = computed(() => {
   return map[order.value?.status] ?? 0
 })
 
-onMounted(async () => {
+const fetchOrder = async () => {
   loading.value = true
   try {
     order.value = await orderApi.getById(Number(route.params.id))
@@ -124,7 +132,9 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(fetchOrder)
 
 const getStatusType = (s: number) => {
   const map: Record<number, string> = { 0: 'warning', 1: '', 2: 'info', 3: 'success', 4: 'danger' }
@@ -143,10 +153,15 @@ const handlePay = () => ElMessage.info('支付功能开发中')
 const handleCancel = async () => {
   try {
     await ElMessageBox.confirm('确定取消订单？', '提示', { type: 'warning' })
+  } catch { return }
+
+  try {
     await orderApi.cancel(order.value.id)
-    ElMessage.success('已取消')
-    order.value.status = 4
-  } catch {}
+    ElMessage.success('订单已取消')
+    fetchOrder()
+  } catch (e: any) {
+    ElMessage.error(e.response?.data?.message || '取消失败')
+  }
 }
 </script>
 
@@ -206,6 +221,32 @@ $gold: #c9a96e;
     background: #fff;
     border-radius: 16px;
     border: 1px solid #f0ece6;
+  }
+
+  &__cancelled {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 48px;
+    padding: 32px;
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #f0ece6;
+    font-size: 16px;
+    font-weight: 600;
+    color: #c45b5b;
+
+    &-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(#c45b5b, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #c45b5b;
+    }
   }
 
   &__layout {

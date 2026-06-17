@@ -6,7 +6,7 @@
         <h1 class="cart-page__title">购物车</h1>
       </div>
 
-      <div class="cart-page__layout" v-if="cartStore.items.length > 0">
+      <div class="cart-page__layout" v-if="!loading && cartStore.items.length > 0">
         <!-- Cart Items -->
         <div class="cart-page__items animate-fade-up delay-1">
           <div class="cart-page__item" v-for="item in cartStore.items" :key="item.id">
@@ -61,8 +61,13 @@
         </div>
       </div>
 
+      <!-- Loading -->
+      <div v-if="loading" class="cart-page__loading">
+        <el-skeleton :rows="5" animated />
+      </div>
+
       <!-- Empty State -->
-      <div v-else class="cart-page__empty animate-fade-up">
+      <div v-else-if="cartStore.items.length === 0" class="cart-page__empty animate-fade-up">
         <div class="cart-page__empty-icon">🛒</div>
         <h3>购物车是空的</h3>
         <p>去挑选一些美味的蛋糕吧</p>
@@ -73,15 +78,19 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const router = useRouter()
 const cartStore = useCartStore()
+const loading = ref(true)
 
-onMounted(() => { cartStore.fetchCart() })
+onMounted(async () => {
+  await cartStore.fetchCart()
+  loading.value = false
+})
 
 const updateQty = async (item: any, qty: number) => {
   const old = item.quantity
@@ -152,6 +161,11 @@ $cream: #faf8f5;
     font-size: 36px;
     font-weight: 600;
     color: $navy;
+  }
+
+  &__loading {
+    background: #fff; border-radius: 20px; padding: 32px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
   }
 
   &__layout {

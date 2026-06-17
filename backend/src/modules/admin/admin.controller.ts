@@ -129,6 +129,15 @@ export class AdminController {
     return this.adminService.updateOrderStatus(id, data.status);
   }
 
+  @Put('orders/:id/commission')
+  @ApiOperation({ summary: '设置订单佣金' })
+  async setOrderCommission(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('commission') commission: number,
+  ) {
+    return this.adminService.setOrderCommission(id, commission);
+  }
+
   @Delete('orders/:id')
   @ApiOperation({ summary: '删除订单' })
   async deleteOrder(@Param('id', ParseIntPipe) id: number) {

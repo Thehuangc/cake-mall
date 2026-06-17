@@ -8,13 +8,15 @@ import { JwtStrategy } from './jwt.strategy';
 import { SeedService } from './seed.service';
 import { User } from '../user/user.entity';
 
+const jwtSecret = process.env.JWT_SECRET || 'fallback-dev-secret-change-in-production';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([User]),
     PassportModule,
     JwtModule.register({
-      secret: 'cake-mall-secret-key',
-      signOptions: { expiresIn: '7d' },
+      secret: jwtSecret,
+      signOptions: { expiresIn: '24h' },
     }),
   ],
   controllers: [AuthController],

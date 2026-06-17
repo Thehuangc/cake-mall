@@ -93,7 +93,10 @@ const rules = {
   ],
 }
 
-onMounted(() => {
+onMounted(async () => {
+  if (!userStore.user) {
+    await userStore.fetchProfile()
+  }
   if (userStore.user) {
     form.username = userStore.user.username
     form.phone = userStore.user.phone || ''
@@ -103,12 +106,16 @@ onMounted(() => {
 const saveProfile = async () => {
   try {
     await formRef.value?.validate()
-    saving.value = true
+  } catch { return }
+
+  saving.value = true
+  try {
     await userApi.updateProfile(form)
     await userStore.fetchProfile()
     ElMessage.success('保存成功')
-  } catch (e) { console.error(e) }
-  finally { saving.value = false }
+  } catch (e: any) {
+    ElMessage.error(e.response?.data?.message || '保存失败')
+  } finally { saving.value = false }
 }
 </script>
 

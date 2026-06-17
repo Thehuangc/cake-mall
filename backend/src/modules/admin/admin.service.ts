@@ -317,6 +317,20 @@ export class AdminService {
     return this.orderRepository.remove(order);
   }
 
+  async setOrderCommission(id: number, commission: number) {
+    const order = await this.orderRepository.findOne({ where: { id } });
+    if (!order) {
+      throw new NotFoundException('订单不存在');
+    }
+
+    if (commission < 0) {
+      throw new BadRequestException('佣金不能为负数');
+    }
+
+    order.commission = commission;
+    return this.orderRepository.save(order);
+  }
+
   // ─── 统计数据 ─────────────────────────────
 
   async getDashboardStats() {

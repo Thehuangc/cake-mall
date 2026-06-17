@@ -25,6 +25,15 @@ export class Order {
   @Column({ length: 255, nullable: true })
   remark: string;
 
+  @Column({ nullable: true })
+  rider_id: number;
+
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  commission: number;
+
+  @Column({ type: 'timestamp', nullable: true })
+  delivered_at: Date;
+
   @CreateDateColumn()
   created_at: Date;
 

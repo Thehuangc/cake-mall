@@ -61,8 +61,19 @@ export const adminApi = {
     return api.put(`/admin/orders/${id}/status`, { status })
   },
 
+  setOrderCommission(id: number, commission: number) {
+    return api.put(`/admin/orders/${id}/commission`, { commission })
+  },
+
   deleteOrder(id: number) {
     return api.delete(`/admin/orders/${id}`)
+  },
+
+  // 图片上传
+  uploadImage(file: File) {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post('/admin/upload/image', formData)
   },
 
   // 统计数据

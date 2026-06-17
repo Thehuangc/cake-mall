@@ -9,7 +9,7 @@
 
       <el-form ref="formRef" :model="form" :rules="rules" @keyup.enter="handleLogin" class="admin-login__form">
         <el-form-item prop="email">
-          <el-input v-model="form.email" placeholder="管理员邮箱" size="large" prefix-icon="Message" />
+          <el-input v-model="form.email" placeholder="邮箱或用户名登录" size="large" prefix-icon="Message" />
         </el-form-item>
         <el-form-item prop="password">
           <el-input v-model="form.password" type="password" placeholder="密码" size="large" prefix-icon="Lock" show-password />
@@ -29,19 +29,20 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
+import { useCartStore } from '@/stores/cart'
 import { authApi } from '@/api/auth'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
+const userStore = useUserStore()
+const cartStore = useCartStore()
 const formRef = ref()
 const loading = ref(false)
 const form = reactive({ email: '', password: '' })
 
 const rules = {
-  email: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱', trigger: 'blur' },
-  ],
+  email: [{ required: true, message: '请输入邮箱或用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 }
 
@@ -51,15 +52,15 @@ const handleLogin = async () => {
     loading.value = true
     const res: any = await authApi.adminLogin({ email: form.email, password: form.password })
     localStorage.setItem('adminToken', res.token)
+    localStorage.setItem('token', res.token)
+    userStore.token = res.token
+    userStore.user = res.user
+    cartStore.fetchCart()
     ElMessage.success('登录成功')
     router.push('/admin/dashboard')
   } catch (error: any) {
-    if (error.response?.data?.message) {
-      ElMessage.error(error.response.data.message)
-    }
-  } finally {
-    loading.value = false
-  }
+    if (error.response?.data?.message) ElMessage.error(error.response.data.message)
+  } finally { loading.value = false }
 }
 </script>
 

@@ -22,13 +22,19 @@
               </div>
               <div class="checkout-page__row checkout-page__row--3">
                 <el-form-item label="省份" prop="province">
-                  <el-input v-model="form.province" placeholder="省份" size="large" />
+                  <el-select v-model="form.province" placeholder="请选择省份" size="large" filterable teleported="false" @change="onProvinceChange" @visible-change="onDropdownVisible">
+                    <el-option v-for="p in provinces" :key="p" :label="p" :value="p" />
+                  </el-select>
                 </el-form-item>
                 <el-form-item label="城市" prop="city">
-                  <el-input v-model="form.city" placeholder="城市" size="large" />
+                  <el-select v-model="form.city" placeholder="请选择城市" size="large" filterable teleported="false" :disabled="!form.province" @change="onCityChange" @visible-change="onDropdownVisible">
+                    <el-option v-for="c in cities" :key="c" :label="c" :value="c" />
+                  </el-select>
                 </el-form-item>
                 <el-form-item label="区县" prop="district">
-                  <el-input v-model="form.district" placeholder="区县" size="large" />
+                  <el-select v-model="form.district" placeholder="请选择区县" size="large" filterable teleported="false" :disabled="!form.city" @visible-change="onDropdownVisible">
+                    <el-option v-for="d in districts" :key="d" :label="d" :value="d" />
+                  </el-select>
                 </el-form-item>
               </div>
               <el-form-item label="详细地址" prop="address">
@@ -68,8 +74,9 @@
             <span>应付金额</span>
             <span>¥{{ cartStore.total.toFixed(2) }}</span>
           </div>
-          <button class="checkout-page__submit" @click="submitOrder" :loading="submitting">
-            提交订单
+          <button class="checkout-page__submit" @click="submitOrder" :disabled="submitting">
+            <span v-if="!submitting">提交订单</span>
+            <span v-else class="checkout-page__spinner"></span>
           </button>
           <router-link to="/cart" class="checkout-page__back">返回购物车</router-link>
         </div>
@@ -95,10 +102,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { orderApi } from '@/api/order'
+import { regions } from '@/data/regions'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
@@ -118,15 +126,35 @@ const form = reactive({
   name: '', phone: '', province: '', city: '', district: '', address: '',
 })
 
+const provinces = computed(() => regions.map(p => p.name))
+const cities = computed(() => {
+  const p = regions.find(r => r.name === form.province)
+  return p ? p.cities.map(c => c.name) : []
+})
+const districts = computed(() => {
+  const p = regions.find(r => r.name === form.province)
+  const c = p?.cities.find(ci => ci.name === form.city)
+  return c ? c.districts.map(d => d.name) : []
+})
+
+const onProvinceChange = () => {
+  form.city = ''
+  form.district = ''
+}
+const onCityChange = () => {
+  form.district = ''
+}
+const onDropdownVisible = () => {}
+
 const rules = {
   name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   phone: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
     { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' },
   ],
-  province: [{ required: true, message: '请输入省份', trigger: 'blur' }],
-  city: [{ required: true, message: '请输入城市', trigger: 'blur' }],
-  district: [{ required: true, message: '请输入区县', trigger: 'blur' }],
+  province: [{ required: true, message: '请选择省份', trigger: 'change' }],
+  city: [{ required: true, message: '请选择城市', trigger: 'change' }],
+  district: [{ required: true, message: '请选择区县', trigger: 'change' }],
   address: [{ required: true, message: '请输入详细地址', trigger: 'blur' }],
 }
 
@@ -139,16 +167,27 @@ onMounted(() => {
 })
 
 const submitOrder = async () => {
+  // 先验证表单，失败则不继续
   try {
     await formRef.value?.validate()
-    submitting.value = true
+  } catch {
+    return
+  }
+
+  if (cartStore.items.length === 0) {
+    ElMessage.warning('购物车为空')
+    router.push('/cart')
+    return
+  }
+
+  submitting.value = true
+  try {
     const res: any = await orderApi.create({
       address: { ...form },
       remark: remark.value || undefined,
     })
     orderId.value = res.id
     showSuccess.value = true
-    // 清空购物车
     await cartStore.clearCart()
     redirectTimer = setTimeout(() => {
       router.push(`/orders/${res.id}`)
@@ -213,6 +252,7 @@ $gold: #c9a96e;
     border: 1px solid #f0ece6;
     border-radius: 20px;
     padding: 32px;
+    overflow: visible;
 
     h3 {
       font-size: 18px;
@@ -228,6 +268,14 @@ $gold: #c9a96e;
 
     :deep(.el-input__wrapper) {
       border-radius: 10px;
+    }
+
+    :deep(.el-select) {
+      width: 100%;
+    }
+
+    :deep(.el-select-dropdown) {
+      z-index: 3000 !important;
     }
   }
 
@@ -341,11 +389,29 @@ $gold: #c9a96e;
     cursor: pointer;
     transition: all 0.3s ease;
     font-family: 'Outfit', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
 
-    &:hover {
+    &:hover:not(:disabled) {
       transform: translateY(-1px);
       box-shadow: 0 8px 24px rgba($navy, 0.2);
     }
+
+    &:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+  }
+
+  &__spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
   }
 
   &__back {
@@ -414,6 +480,8 @@ $gold: #c9a96e;
     display: inline-block;
   }
 }
+
+@keyframes spin { to { transform: rotate(360deg); } }
 
 @keyframes successBounce {
   0% { transform: scale(0); opacity: 0; }

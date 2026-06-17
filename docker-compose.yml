@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # MySQL数据库
+  db:
+    image: mysql:8.0
+    container_name: cake-mall-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_NAME:-cake_mall}
+      MYSQL_USER: ${DB_USER:-cake_mall_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-strong_password_here}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 5
+    networks:
+      - cake-mall-net
+
+  # 后端API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cake-mall-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-cake_mall_user}
+      DB_PASSWORD: ${DB_PASSWORD:-strong_password_here}
+      DB_NAME: ${DB_NAME:-cake_mall}
+      JWT_SECRET: ${JWT_SECRET:-change_this_to_a_random_string_at_least_32_chars}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@cake-mall.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change_this_password}
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - cake-mall-net
+
+  # 前端Nginx
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cake-mall-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - cake-mall-net
+
+volumes:
+  mysql_data:
+
+networks:
+  cake-mall-net:
+    driver: bridge

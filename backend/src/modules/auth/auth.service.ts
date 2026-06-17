@@ -56,23 +56,21 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
 
-    // 查找用户
+    // 支持邮箱或用户名登录
     const user = await this.userRepository.findOne({
-      where: { email },
+      where: [{ email: email || '' }, { username: email || '' }],
     });
 
     if (!user) {
-      throw new UnauthorizedException('邮箱或密码错误');
+      throw new UnauthorizedException('账号或密码错误');
     }
 
-    // 验证密码
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('邮箱或密码错误');
+      throw new UnauthorizedException('账号或密码错误');
     }
 
-    // 生成token
     const token = this.generateToken(user);
 
     return {
@@ -103,7 +101,9 @@ export class AuthService {
   async adminLogin(loginDto: LoginDto) {
     const { email, password } = loginDto;
 
-    const user = await this.userRepository.findOne({ where: { email } });
+    const user = await this.userRepository.findOne({
+      where: [{ email: email || '' }, { username: email || '' }],
+    });
 
     if (!user || user.role !== 'admin') {
       throw new UnauthorizedException('管理员账号或密码错误');

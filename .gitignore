@@ -1,6 +1,24 @@
 node_modules/
 dist/
 .env
+.env.production
 *.log
 .DS_Store
 Thumbs.db
+docker-compose.override.yml
+
+# Spring Boot
+backend-spring/target/
+*.jar
+
+# 上传文件
+uploads/
+
+# SSH密钥
+*.pem
+*.key
+
+# IDE
+.idea/
+.vscode/
+*.iml

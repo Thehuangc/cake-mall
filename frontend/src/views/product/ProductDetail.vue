@@ -16,6 +16,7 @@
         <div class="detail-page__gallery">
           <div class="detail-page__image-main">
             <img :src="currentImage" :alt="product.name" />
+            <div v-if="product.stock === 0" class="detail-page__sold-out">已售罄</div>
             <span v-if="product.original_price" class="detail-page__badge">
               省 ¥{{ (product.original_price - product.price).toFixed(0) }}
             </span>
@@ -81,13 +82,14 @@
 
           <!-- Actions -->
           <div class="detail-page__actions">
-            <button class="detail-page__btn-cart" @click="addToCart" :disabled="product.stock === 0">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button class="detail-page__btn-cart" @click="addToCart" :disabled="product.stock === 0 || addingToCart">
+              <svg v-if="!addingToCart" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="9" cy="21" r="1"></circle>
                 <circle cx="20" cy="21" r="1"></circle>
                 <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
               </svg>
-              加入购物车
+              <span v-if="addingToCart" class="detail-page__btn-spinner"></span>
+              {{ addingToCart ? '添加中...' : '加入购物车' }}
             </button>
             <button class="detail-page__btn-buy" @click="buyNow" :disabled="product.stock === 0">
               立即购买
@@ -196,8 +198,9 @@ const addToCart = async () => {
     await cartStore.addItem(product.value.id, quantity.value)
     showCartSuccess.value = true
     setTimeout(() => { showCartSuccess.value = false }, 1800)
-  } catch (e) { console.error(e) }
-  finally { addingToCart.value = false }
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '添加失败')
+  } finally { addingToCart.value = false }
 }
 
 const buyNow = async () => {
@@ -208,8 +211,10 @@ const buyNow = async () => {
   }
   try {
     await cartStore.addItem(product.value.id, quantity.value)
-    router.push('/cart')
-  } catch (e) { console.error(e) }
+    router.push('/checkout')
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '购买失败')
+  }
 }
 </script>
 
@@ -276,6 +281,21 @@ $cream: #faf8f5;
     }
 
     &:hover img { transform: scale(1.03); }
+  }
+
+  &__sold-out {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-15deg);
+    padding: 10px 32px;
+    background: rgba(#c45b5b, 0.9);
+    color: #fff;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    border-radius: 8px;
+    z-index: 2;
   }
 
   &__badge {
@@ -482,6 +502,15 @@ $cream: #faf8f5;
     border: 2px solid $navy;
     color: $navy;
 
+    &-spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba($navy, 0.3);
+      border-top-color: $navy;
+      border-radius: 50%;
+      animation: pd-spin 0.6s linear infinite;
+    }
+
     &:hover:not(:disabled) {
       background: $navy;
       color: #fff;
@@ -592,7 +621,7 @@ $cream: #faf8f5;
     align-items: center;
     gap: 12px;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
+    z-index: 1001;
     font-size: 14px;
     font-weight: 500;
     color: $navy;
@@ -606,6 +635,8 @@ $cream: #faf8f5;
     &:hover { opacity: 0.7; }
   }
 }
+
+@keyframes pd-spin { to { transform: rotate(360deg); } }
 
 .slide-down-enter-active,
 .slide-down-leave-active {

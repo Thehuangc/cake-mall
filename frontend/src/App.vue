@@ -3,7 +3,12 @@
   <div v-if="isRouteLoading" class="page-loading"></div>
 
   <router-view v-slot="{ Component, route }">
-    <transition :name="getTransition(route)" mode="out-in">
+    <template v-if="isNoTransition(route)">
+      <keep-alive :include="['Home']">
+        <component :is="Component" :key="route.path" />
+      </keep-alive>
+    </template>
+    <transition v-else :name="getTransition(route)" mode="out-in">
       <keep-alive :include="['Home']">
         <component :is="Component" :key="route.path" />
       </keep-alive>
@@ -17,6 +22,10 @@ import { useRoute } from 'vue-router'
 
 const route = useRoute()
 const isRouteLoading = ref(false)
+
+const isNoTransition = (r: any) => {
+  return r.matched.some((m: any) => m.meta.noTransition)
+}
 
 const getTransition = (r: any) => {
   return r.meta.transition || 'page'

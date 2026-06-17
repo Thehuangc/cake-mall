@@ -21,6 +21,17 @@
             全部商品
           </router-link>
           <router-link
+            v-if="userStore.user?.role === 'rider'"
+            to="/rider/dashboard"
+            class="header__nav-link header__nav-rider"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            骑手端
+          </router-link>
+          <router-link
             v-if="userStore.user?.role === 'admin'"
             to="/admin/dashboard"
             class="header__nav-link header__nav-admin"
@@ -53,6 +64,9 @@
 
         <!-- Actions -->
         <div class="header__actions">
+          <button class="header__hamburger" @click="mobileMenuOpen = !mobileMenuOpen" :class="{ open: mobileMenuOpen }">
+            <span></span><span></span><span></span>
+          </button>
           <router-link to="/cart" class="header__action-btn">
             <el-badge :value="cartStore.count" :hidden="cartStore.count === 0" :max="99">
               <el-icon :size="20"><ShoppingCart /></el-icon>
@@ -87,6 +101,43 @@
         </div>
       </div>
     </header>
+
+    <!-- Mobile Menu -->
+    <transition name="slide-menu">
+      <div v-if="mobileMenuOpen" class="mobile-menu" @click.self="mobileMenuOpen = false">
+        <div class="mobile-menu__panel">
+          <div class="mobile-menu__header">
+            <span class="mobile-menu__brand">L'Atelier du Gâteau</span>
+            <button class="mobile-menu__close" @click="mobileMenuOpen = false">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <nav class="mobile-menu__nav">
+            <router-link to="/" class="mobile-menu__link" @click="mobileMenuOpen = false">首页</router-link>
+            <router-link to="/products" class="mobile-menu__link" @click="mobileMenuOpen = false">全部商品</router-link>
+            <router-link to="/cart" class="mobile-menu__link" @click="mobileMenuOpen = false">
+              购物车
+              <el-badge :value="cartStore.count" :hidden="cartStore.count === 0" :max="99" />
+            </router-link>
+            <router-link v-if="userStore.isAuthenticated" to="/orders" class="mobile-menu__link" @click="mobileMenuOpen = false">我的订单</router-link>
+            <router-link v-if="userStore.user?.role === 'admin'" to="/admin/dashboard" class="mobile-menu__link mobile-menu__link--admin" @click="mobileMenuOpen = false">后台管理</router-link>
+            <router-link v-if="userStore.user?.role === 'rider'" to="/rider/dashboard" class="mobile-menu__link mobile-menu__link--rider" @click="mobileMenuOpen = false">骑手端</router-link>
+          </nav>
+          <div class="mobile-menu__footer">
+            <template v-if="userStore.isAuthenticated">
+              <div class="mobile-menu__user">
+                <div class="mobile-menu__avatar">{{ userStore.user?.username?.charAt(0)?.toUpperCase() }}</div>
+                <span>{{ userStore.user?.username }}</span>
+              </div>
+              <button class="mobile-menu__logout" @click="handleLogout">退出登录</button>
+            </template>
+            <router-link v-else to="/login" class="mobile-menu__login-btn" @click="mobileMenuOpen = false">登录 / 注册</router-link>
+          </div>
+        </div>
+      </div>
+    </transition>
 
     <!-- Main Content -->
     <main class="main">
@@ -136,7 +187,7 @@
       </div>
 
       <div class="footer__bottom">
-        <p>© 2024 L'Atelier du Gâteau · 蛋糕工坊 · 用心制作每一份甜蜜</p>
+        <p>© 2026 L'Atelier du Gâteau · 蛋糕工坊 · 用心制作每一份甜蜜</p>
       </div>
     </footer>
 
@@ -150,8 +201,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useCartStore } from '@/stores/cart'
 import { ElMessage } from 'element-plus'
@@ -160,6 +211,7 @@ import {
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const cartStore = useCartStore()
 
@@ -167,6 +219,7 @@ const searchKeyword = ref('')
 const searchExpanded = ref(false)
 const isScrolled = ref(false)
 const isHidden = ref(false)
+const mobileMenuOpen = ref(false)
 let lastScrollY = 0
 
 const handleScroll = () => {
@@ -175,6 +228,10 @@ const handleScroll = () => {
   isHidden.value = currentY > 300 && currentY > lastScrollY
   lastScrollY = currentY
 }
+
+watch(() => route.path, () => {
+  mobileMenuOpen.value = false
+})
 
 onMounted(() => {
   window.addEventListener('scroll', handleScroll, { passive: true })
@@ -204,6 +261,13 @@ const handleUserCommand = (command: string) => {
       router.push('/')
       break
   }
+}
+
+const handleLogout = () => {
+  userStore.logout()
+  ElMessage.success('已退出登录')
+  mobileMenuOpen.value = false
+  router.push('/')
 }
 
 const scrollToTop = () => {
@@ -236,7 +300,7 @@ const scrollToTop = () => {
   }
 
   &__inner {
-    max-width: 1280px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 0 32px;
     height: 72px;
@@ -352,6 +416,33 @@ const scrollToTop = () => {
         opacity: 0.9;
       }
     }
+
+    &-rider {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 4px;
+      padding: 7px 16px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff !important;
+      font-weight: 600;
+      font-size: 13px;
+      border-radius: 8px;
+      letter-spacing: 0.03em;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
+      &::after { display: none; }
+
+      &:hover {
+        color: #fff !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+        background: linear-gradient(135deg, #34d399, #10b981);
+      }
+
+      svg { opacity: 0.9; }
+    }
   }
 
   &__search {
@@ -446,6 +537,33 @@ const scrollToTop = () => {
       background: rgba(201, 169, 110, 0.05);
     }
   }
+
+  &__hamburger {
+    display: none;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 10px 8px;
+    flex-direction: column;
+    justify-content: space-between;
+
+    span {
+      display: block;
+      width: 100%;
+      height: 2px;
+      background: #1a1f36;
+      border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+
+    &.open {
+      span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+      span:nth-child(2) { opacity: 0; }
+      span:nth-child(3) { transform: rotate(-45deg) translate(6px, -6px); }
+    }
+  }
 }
 
 // ─── Main ──────────────────────────────────────
@@ -461,7 +579,7 @@ const scrollToTop = () => {
   margin-top: 120px;
 
   &__inner {
-    max-width: 1280px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 80px 32px 60px;
     display: grid;
@@ -534,7 +652,7 @@ const scrollToTop = () => {
     border-top: 1px solid rgba(255, 255, 255, 0.08);
 
     p {
-      max-width: 1280px;
+      max-width: 1200px;
       margin: 0 auto;
       padding: 24px 32px;
       font-size: 12px;
@@ -569,6 +687,166 @@ const scrollToTop = () => {
   }
 }
 
+// ─── Mobile Menu ────────────────────────────────
+.mobile-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(26, 31, 54, 0.4);
+  backdrop-filter: blur(4px);
+
+  &__panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 300px;
+    max-width: 85vw;
+    height: 100%;
+    background: #fff;
+    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.12);
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid #f0ece6;
+  }
+
+  &__brand {
+    font-family: 'Playfair Display', serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1a1f36;
+  }
+
+  &__close {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: #f5f3f0;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #6b6b6b;
+    transition: all 0.2s;
+
+    &:hover { background: #e8e4de; color: #1a1f36; }
+  }
+
+  &__nav {
+    flex: 1;
+    padding: 16px 0;
+    overflow-y: auto;
+  }
+
+  &__link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 24px;
+    font-size: 15px;
+    font-weight: 500;
+    color: #6b6b6b;
+    text-decoration: none;
+    transition: all 0.2s;
+
+    &:hover, &.router-link-active {
+      color: #1a1f36;
+      background: #faf8f5;
+    }
+
+    &--admin {
+      color: #c9a96e;
+      font-weight: 600;
+    }
+
+    &--rider {
+      color: #10b981;
+      font-weight: 600;
+    }
+
+    :deep(.el-badge) {
+      margin-left: auto;
+    }
+  }
+
+  &__footer {
+    padding: 20px 24px;
+    border-top: 1px solid #f0ece6;
+  }
+
+  &__user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1f36;
+  }
+
+  &__avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #1a1f36, #2d3250);
+    color: #c9a96e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'Playfair Display', serif;
+  }
+
+  &__logout {
+    width: 100%;
+    padding: 10px;
+    background: none;
+    border: 1px solid #e8e4de;
+    border-radius: 10px;
+    font-size: 13px;
+    color: #c45b5b;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    transition: all 0.2s;
+
+    &:hover { background: #f8e8e8; border-color: #c45b5b; }
+  }
+
+  &__login-btn {
+    display: block;
+    text-align: center;
+    padding: 12px;
+    background: #1a1f36;
+    color: #fff;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+
+    &:hover { opacity: 0.9; }
+  }
+}
+
+.slide-menu-enter-active,
+.slide-menu-leave-active {
+  transition: opacity 0.3s ease;
+  .mobile-menu__panel { transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+}
+.slide-menu-enter-from,
+.slide-menu-leave-to {
+  opacity: 0;
+  .mobile-menu__panel { transform: translateX(100%); }
+}
+
 // ─── Responsive ────────────────────────────────
 @media (max-width: 768px) {
   .header {
@@ -585,6 +863,8 @@ const scrollToTop = () => {
     }
 
     &__logo-text { display: none; }
+
+    &__hamburger { display: flex; }
   }
 
   .main {

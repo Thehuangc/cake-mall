@@ -44,7 +44,7 @@
             <el-input v-model="form.email" placeholder="邮箱地址" size="large" prefix-icon="Message" />
           </el-form-item>
           <el-form-item prop="password" class="auth-page__field">
-            <el-input v-model="form.password" type="password" placeholder="密码（至少6位）" size="large" prefix-icon="Lock" show-password />
+            <el-input v-model="form.password" type="password" placeholder="密码（至少6位）" size="large" prefix-icon="Lock" show-password autocomplete="new-password" />
           </el-form-item>
           <el-form-item prop="confirmPassword" class="auth-page__field">
             <el-input v-model="form.confirmPassword" type="password" placeholder="确认密码" size="large" prefix-icon="Lock" show-password />
@@ -122,9 +122,13 @@ const handleRegister = async () => {
     loading.value = true
     await userStore.register(form.username, form.email, form.password)
     showSuccess.value = true
-    setTimeout(() => { router.push('/') }, 1200)
+    setTimeout(() => { router.push('/login') }, 1200)
   } catch (error: any) {
-    if (error.response?.data?.message) ElMessage.error(error.response.data.message)
+    if (error.response?.data?.message) {
+      ElMessage.error(error.response.data.message)
+    } else if (!error.response) {
+      ElMessage.error('网络错误，请稍后重试')
+    }
   } finally {
     loading.value = false
   }

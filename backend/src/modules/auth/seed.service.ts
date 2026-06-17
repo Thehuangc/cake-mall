@@ -15,17 +15,20 @@ export class SeedService implements OnModuleInit {
 
   async onModuleInit() {
     await this.seedAdmin();
+    await this.seedRider();
   }
 
   private async seedAdmin() {
-    const adminEmail = 'admin@cake-mall.com';
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@cake-mall.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+
     const existing = await this.userRepository.findOne({
       where: { email: adminEmail },
     });
 
     if (!existing) {
       const salt = await bcrypt.genSalt();
-      const password_hash = await bcrypt.hash('admin123', salt);
+      const password_hash = await bcrypt.hash(adminPassword, salt);
 
       const admin = this.userRepository.create({
         username: 'admin',
@@ -35,7 +38,30 @@ export class SeedService implements OnModuleInit {
       });
 
       await this.userRepository.save(admin);
-      this.logger.log('管理员账号已创建: admin@cake-mall.com / admin123');
+      this.logger.log(`管理员账号已创建: ${adminEmail}`);
+      this.logger.warn('请立即登录并修改默认密码！');
+    }
+  }
+
+  private async seedRider() {
+    const riderEmail = 'rider@cake-mall.com';
+    const existing = await this.userRepository.findOne({
+      where: { email: riderEmail },
+    });
+
+    if (!existing) {
+      const salt = await bcrypt.genSalt();
+      const password_hash = await bcrypt.hash('rider123', salt);
+
+      const rider = this.userRepository.create({
+        username: 'rider',
+        email: riderEmail,
+        password_hash,
+        role: 'rider',
+      });
+
+      await this.userRepository.save(rider);
+      this.logger.log('骑手账号已创建: rider@cake-mall.com / rider123');
     }
   }
 }

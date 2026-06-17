@@ -52,6 +52,7 @@
         >
           <div class="product-card__image">
             <img :src="product.image" :alt="product.name" loading="lazy" />
+            <div v-if="product.stock === 0" class="product-card__sold-out">已售罄</div>
             <div class="product-card__overlay">
               <button class="product-card__quick" @click.stop="$router.push(`/products/${product.id}`)">
                 查看详情
@@ -64,7 +65,7 @@
           <div class="product-card__body">
             <div class="product-card__meta">
               <span class="product-card__category">{{ product.category?.name }}</span>
-              <span class="product-card__rating">★ 4.9</span>
+              <span class="product-card__sales">已售 {{ product.sales }}</span>
             </div>
             <h3 class="product-card__name">{{ product.name }}</h3>
             <p class="product-card__desc">{{ product.description }}</p>
@@ -92,7 +93,7 @@
       </div>
 
       <!-- Pagination -->
-      <div v-if="total > 0" class="products-page__pagination">
+      <div v-if="total > pageSize" class="products-page__pagination">
         <el-pagination
           v-model:current-page="currentPage"
           :page-size="pageSize"
@@ -181,7 +182,9 @@ const addToCart = async (product: any) => {
   try {
     await cartStore.addItem(product.id, 1)
     ElMessage.success('已加入购物车')
-  } catch (e) { console.error(e) }
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '添加失败')
+  }
 }
 </script>
 
@@ -191,7 +194,7 @@ $gold: #c9a96e;
 $cream: #faf8f5;
 
 .container {
-  max-width: 1280px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 32px;
 }
@@ -402,6 +405,21 @@ $cream: #faf8f5;
     .product-card:hover & { transform: translateY(0); }
   }
 
+  &__sold-out {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-12deg);
+    padding: 6px 20px;
+    background: rgba(#c45b5b, 0.9);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    border-radius: 6px;
+    z-index: 2;
+  }
+
   &__badge {
     position: absolute;
     top: 12px;
@@ -430,7 +448,7 @@ $cream: #faf8f5;
     border-radius: 4px;
   }
 
-  &__rating { color: $gold; }
+  &__sales { color: #9a9a9a; }
 
   &__name {
     font-size: 16px;

@@ -106,6 +106,7 @@
           >
             <div class="product-card__image">
               <img :src="product.image" :alt="product.name" loading="lazy" @error="handleImgError" />
+              <div v-if="product.stock === 0" class="product-card__sold-out">已售罄</div>
               <div class="product-card__overlay">
                 <button class="product-card__quick" @click.stop="$router.push(`/products/${product.id}`)">
                   查看详情
@@ -118,7 +119,6 @@
             <div class="product-card__body">
               <div class="product-card__meta">
                 <span class="product-card__sales">已售 {{ product.sales }}</span>
-                <span class="product-card__rating">★ 4.9</span>
               </div>
               <h3 class="product-card__name">{{ product.name }}</h3>
               <p class="product-card__desc">{{ product.description }}</p>
@@ -291,16 +291,20 @@ const addToCart = async (product: any) => {
   try {
     await cartStore.addItem(product.id, 1)
     ElMessage.success('已加入购物车')
-  } catch (e) {
-    console.error(e)
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '添加失败，请重试')
   }
 }
 
 const subscribe = () => {
-  if (email.value) {
-    ElMessage.success('感谢订阅！')
-    email.value = ''
+  if (!email.value) return
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(email.value)) {
+    ElMessage.warning('请输入正确的邮箱地址')
+    return
   }
+  ElMessage.success('感谢订阅！')
+  email.value = ''
 }
 </script>
 
@@ -311,9 +315,9 @@ $gold-light: #d4b97a;
 $cream: #faf8f5;
 
 .container {
-  max-width: 1280px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 0 48px;
+  padding: 0 32px;
 }
 
 .section-header {
@@ -383,9 +387,9 @@ $cream: #faf8f5;
 
   &__content {
     position: relative;
-    max-width: 1280px;
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 0 48px;
+    padding: 0 32px;
     width: 100%;
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -756,6 +760,21 @@ $cream: #faf8f5;
     .product-card:hover & { transform: translateY(0); }
   }
 
+  &__sold-out {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-12deg);
+    padding: 6px 20px;
+    background: rgba(#c45b5b, 0.9);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    border-radius: 6px;
+    z-index: 2;
+  }
+
   &__badge {
     position: absolute;
     top: 14px;
@@ -856,9 +875,9 @@ $cream: #faf8f5;
   }
 
   &__inner {
-    max-width: 1280px;
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 0 48px;
+    padding: 0 32px;
     text-align: center;
     position: relative;
   }
@@ -1044,7 +1063,7 @@ $cream: #faf8f5;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 72px 72px;
+    padding: 72px 64px;
     background: $navy;
     border-radius: 28px;
     position: relative;

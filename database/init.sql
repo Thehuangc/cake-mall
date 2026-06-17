@@ -44,7 +44,9 @@ CREATE TABLE IF NOT EXISTS products (
     status TINYINT DEFAULT 1 COMMENT '0:下架 1:上架',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
+    CHECK (stock >= 0),
+    CHECK (sales >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 购物车表
@@ -86,9 +88,6 @@ CREATE TABLE IF NOT EXISTS order_items (
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 管理员账号将在后端启动时通过 seed 脚本自动创建
--- 默认账号: admin@cake-mall.com / admin123
-
 -- 插入示例分类数据
 INSERT INTO categories (name, icon, sort_order) VALUES
 ('生日蛋糕', '🎂', 1),
@@ -99,11 +98,11 @@ INSERT INTO categories (name, icon, sort_order) VALUES
 
 -- 插入示例商品数据
 INSERT INTO products (name, description, price, original_price, image, category_id, stock, sales) VALUES
-('草莓奶油蛋糕', '新鲜草莓搭配香浓奶油，口感细腻柔软', 128.00, 158.00, '/images/strawberry-cake.jpg', 1, 100, 256),
-('巧克力慕斯', '比利时进口巧克力，丝滑口感', 168.00, 198.00, '/images/chocolate-mousse.jpg', 1, 80, 189),
-('抹茶千层', '日本宇治抹茶，层层叠叠的美味', 148.00, 178.00, '/images/matcha-mille.jpg', 3, 60, 145),
-('婚礼三层蛋糕', '精美婚礼定制蛋糕，浪漫典雅', 588.00, 688.00, '/images/wedding-cake.jpg', 2, 20, 56),
-('法式马卡龙', '缤纷色彩，法式浪漫', 88.00, 108.00, '/images/macaron.jpg', 3, 200, 432),
-('全麦吐司', '健康全麦，松软可口', 28.00, 35.00, '/images/wheat-bread.jpg', 4, 150, 789),
-('水果裸蛋糕', '新鲜水果装饰，自然之美', 188.00, 228.00, '/images/fruit-cake.jpg', 1, 45, 98),
-('芝士蛋糕', '浓郁芝士，入口即化', 138.00, 168.00, '/images/cheese-cake.jpg', 3, 90, 267);
+('草莓奶油蛋糕', '新鲜草莓搭配香浓奶油，口感细腻柔软', 128.00, 158.00, 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=600&q=80', 1, 100, 256),
+('巧克力慕斯', '比利时进口巧克力，丝滑口感', 168.00, 198.00, 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=600&q=80', 1, 80, 189),
+('抹茶千层', '日本宇治抹茶，层层叠叠的美味', 148.00, 178.00, 'https://images.unsplash.com/photo-1519340241574-2cec6aef0c01?auto=format&fit=crop&w=600&q=80', 3, 60, 145),
+('婚礼三层蛋糕', '精美婚礼定制蛋糕，浪漫典雅', 588.00, 688.00, 'https://images.unsplash.com/photo-1535254973040-607b474cb50d?auto=format&fit=crop&w=600&q=80', 2, 20, 56),
+('法式马卡龙', '缤纷色彩，法式浪漫', 88.00, 108.00, 'https://images.unsplash.com/photo-1569864358642-9d1684040f43?auto=format&fit=crop&w=600&q=80', 3, 200, 432),
+('全麦吐司', '健康全麦，松软可口', 28.00, 35.00, 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80', 4, 150, 789),
+('水果裸蛋糕', '新鲜水果装饰，自然之美', 188.00, 228.00, 'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?auto=format&fit=crop&w=600&q=80', 1, 45, 98),
+('芝士蛋糕', '浓郁芝士，入口即化', 138.00, 168.00, 'https://images.unsplash.com/photo-1524351199678-941a58a3df50?auto=format&fit=crop&w=600&q=80', 3, 90, 267);

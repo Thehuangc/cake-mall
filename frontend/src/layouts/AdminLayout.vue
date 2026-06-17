@@ -22,13 +22,14 @@
         </button>
       </div>
 
-      <nav class="admin-layout__nav">
+      <nav class="admin-layout__nav" ref="navRef">
+        <div class="admin-layout__nav-indicator" ref="indicatorRef"></div>
         <router-link
           v-for="item in navItems"
           :key="item.path"
           :to="item.path"
           class="admin-layout__nav-item"
-          :class="{ active: $route.path === item.path }"
+          :data-path="item.path"
         >
           <span class="admin-layout__nav-icon">{{ item.icon }}</span>
           <span v-show="!isCollapsed" class="admin-layout__nav-label">{{ item.label }}</span>
@@ -66,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
@@ -81,6 +82,57 @@ const navItems = [
   { path: '/admin/categories', icon: '📂', label: '分类管理' },
   { path: '/admin/users', icon: '👥', label: '用户管理' },
 ]
+
+// Sliding indicator — 用 Web Animations API，不依赖 CSS transition
+const navRef = ref<HTMLElement | null>(null)
+const indicatorRef = ref<HTMLElement | null>(null)
+let prevTop = 0
+let prevHeight = 46
+
+const updateIndicator = () => {
+  const nav = navRef.value
+  const indicator = indicatorRef.value
+  if (!nav || !indicator) return
+  const el = nav.querySelector(`[data-path="${route.path}"]`) as HTMLElement
+  if (!el) return
+
+  const navRect = nav.getBoundingClientRect()
+  const elRect = el.getBoundingClientRect()
+  const newTop = elRect.top - navRect.top
+  const newHeight = elRect.height
+
+  // 用 Web Animations API 做平滑过渡
+  indicator.animate([
+    { top: `${prevTop}px`, height: `${prevHeight}px` },
+    { top: `${newTop}px`, height: `${newHeight}px` },
+  ], {
+    duration: 600,
+    easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    fill: 'forwards',
+  })
+
+  prevTop = newTop
+  prevHeight = newHeight
+}
+
+watch(() => route.path, () => nextTick(updateIndicator))
+onMounted(() => {
+  // 初始化位置（无动画）
+  nextTick(() => {
+    const nav = navRef.value
+    const indicator = indicatorRef.value
+    if (!nav || !indicator) return
+    const el = nav.querySelector(`[data-path="${route.path}"]`) as HTMLElement
+    if (!el) return
+    const navRect = nav.getBoundingClientRect()
+    const elRect = el.getBoundingClientRect()
+    prevTop = elRect.top - navRect.top
+    prevHeight = elRect.height
+    indicator.style.top = `${prevTop}px`
+    indicator.style.height = `${prevHeight}px`
+    indicator.style.opacity = '1'
+  })
+})
 
 const currentTitle = computed(() => {
   const item = navItems.find(n => n.path === route.path)
@@ -179,6 +231,19 @@ $gold: #c9a96e;
     display: flex;
     flex-direction: column;
     gap: 2px;
+    position: relative;
+  }
+
+  &__nav-indicator {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    top: 0;
+    background: rgba($gold, 0.15);
+    border-radius: 10px;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0;
   }
 
   &__nav-item {
@@ -191,20 +256,20 @@ $gold: #c9a96e;
     font-weight: 500;
     color: rgba(255, 255, 255, 0.5);
     text-decoration: none;
-    transition: all 0.2s ease;
     cursor: pointer;
     border: none;
     background: none;
     width: 100%;
     font-family: 'Outfit', sans-serif;
+    position: relative;
+    z-index: 1;
+    transition: color 0.3s ease;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.06);
       color: rgba(255, 255, 255, 0.8);
     }
 
-    &.active {
-      background: rgba($gold, 0.15);
+    &.router-link-active {
       color: $gold;
     }
   }
@@ -281,4 +346,5 @@ $gold: #c9a96e;
     padding: 32px;
   }
 }
+
 </style>

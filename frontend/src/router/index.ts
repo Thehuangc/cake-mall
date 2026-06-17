@@ -65,6 +65,23 @@ const router = createRouter({
       name: 'Register',
       component: () => import('@/views/auth/Register.vue'),
     },
+    // 骑手端路由
+    {
+      path: '/rider/login',
+      name: 'RiderLogin',
+      component: () => import('@/views/rider/Login.vue'),
+    },
+    {
+      path: '/rider',
+      component: () => import('@/layouts/RiderLayout.vue'),
+      meta: { requiresRider: true, noTransition: true },
+      children: [
+        { path: '', redirect: '/rider/dashboard' },
+        { path: 'dashboard', name: 'RiderDashboard', component: () => import('@/views/rider/Dashboard.vue') },
+        { path: 'available', name: 'RiderAvailable', component: () => import('@/views/rider/AvailableOrders.vue') },
+        { path: 'my-orders', name: 'RiderMyOrders', component: () => import('@/views/rider/MyOrders.vue') },
+      ],
+    },
     // 管理后台路由
     {
       path: '/admin/login',
@@ -74,7 +91,7 @@ const router = createRouter({
     {
       path: '/admin',
       component: () => import('@/layouts/AdminLayout.vue'),
-      meta: { requiresAdmin: true },
+      meta: { requiresAdmin: true, noTransition: true },
       children: [
         {
           path: '',
@@ -121,20 +138,29 @@ router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
 
   // 管理后台路由守卫
-  if (to.meta.requiresAdmin) {
+  const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin)
+  if (requiresAdmin) {
     const adminToken = localStorage.getItem('adminToken')
-    if (!adminToken) {
-      next('/admin/login')
-    } else {
-      next()
-    }
+    if (!adminToken) { next('/admin/login'); return }
+    next(); return
   }
-  // 前台路由守卫
-  else if (to.meta.requiresAuth && !userStore.isAuthenticated) {
-    next('/login')
-  } else {
-    next()
+
+  // 骑手端路由守卫
+  const requiresRider = to.matched.some(record => record.meta.requiresRider)
+  if (requiresRider) {
+    const token = localStorage.getItem('token')
+    if (!token) { next('/rider/login'); return }
+    next(); return
   }
+
+  // 前台路由守卫 - 跳转登录时携带原始路径
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  if (requiresAuth && !userStore.isAuthenticated) {
+    next({ path: '/login', query: { redirect: to.fullPath } })
+    return
+  }
+
+  next()
 })
 
 export default router

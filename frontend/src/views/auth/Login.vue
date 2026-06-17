@@ -42,7 +42,7 @@
           <el-form-item prop="email" class="auth-page__field">
             <el-input
               v-model="form.email"
-              placeholder="邮箱地址"
+              placeholder="邮箱或用户名"
               size="large"
               prefix-icon="Message"
             />
@@ -56,12 +56,12 @@
               size="large"
               prefix-icon="Lock"
               show-password
+              autocomplete="current-password"
             />
           </el-form-item>
 
           <div class="auth-page__options">
             <el-checkbox v-model="rememberMe">记住我</el-checkbox>
-            <a href="#" class="auth-page__forgot">忘记密码？</a>
           </div>
 
           <el-form-item>
@@ -107,12 +107,13 @@
 
 <script setup lang="ts">
 import { ref, reactive, onBeforeUnmount } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useCartStore } from '@/stores/cart'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const cartStore = useCartStore()
 
@@ -130,8 +131,7 @@ const form = reactive({ email: '', password: '' })
 
 const rules = {
   email: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱', trigger: 'blur' },
+    { required: true, message: '请输入邮箱或用户名', trigger: 'blur' },
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
@@ -143,15 +143,19 @@ const handleLogin = async () => {
   try {
     await formRef.value?.validate()
     loading.value = true
-    await userStore.login(form.email, form.password)
+    const res: any = await userStore.login(form.email, form.password)
 
-    // Fetch cart after login
-    cartStore.fetchCart()
+    // 如果是管理员，同时写入adminToken
+    if (res.user?.role === 'admin') {
+      localStorage.setItem('adminToken', res.token)
+    }
 
-    // Success animation
+    await cartStore.fetchCart()
+
     showSuccess.value = true
+    const redirectTo = route.query.redirect as string || '/'
     redirectTimer = setTimeout(() => {
-      router.push('/')
+      router.push(redirectTo)
     }, 1200)
   } catch (error: any) {
     if (error.response?.data?.message) {

@@ -2,31 +2,16 @@
   <div class="order-manage">
     <div class="page-header">
       <h2>订单管理</h2>
-      <div class="header-actions">
-        <el-button @click="handleExport">
-          <el-icon><Download /></el-icon>
-          导出订单
-        </el-button>
-      </div>
     </div>
 
-    <!-- 搜索栏 -->
     <div class="search-bar">
-      <el-input
-        v-model="searchKeyword"
-        placeholder="搜索订单号/用户..."
-        clearable
-        class="search-input"
-        @keyup.enter="handleSearch"
-      >
-        <template #prefix>
-          <el-icon><Search /></el-icon>
-        </template>
+      <el-input v-model="searchKeyword" placeholder="搜索订单号/用户…" clearable class="search-input" @keyup.enter="handleSearch">
+        <template #prefix><el-icon><Search /></el-icon></template>
       </el-input>
       <el-select v-model="selectedStatus" placeholder="订单状态" clearable class="status-select">
         <el-option label="待付款" :value="0" />
         <el-option label="已付款" :value="1" />
-        <el-option label="已发货" :value="2" />
+        <el-option label="已取货" :value="2" />
         <el-option label="已完成" :value="3" />
         <el-option label="已取消" :value="4" />
       </el-select>
@@ -34,159 +19,97 @@
       <el-button @click="handleReset">重置</el-button>
     </div>
 
-    <!-- 订单表格 -->
-    <el-table :data="orders" style="width: 100%" class="order-table" v-loading="loading">
+    <el-table :data="orders" class="order-table" v-loading="loading">
       <el-table-column prop="order_no" label="订单号" width="200" />
       <el-table-column label="用户" width="120">
-        <template #default="{ row }">
-          {{ row.user?.username || '-' }}
-        </template>
+        <template #default="{ row }">{{ row.user?.username || '-' }}</template>
       </el-table-column>
       <el-table-column label="商品" min-width="200">
         <template #default="{ row }">
           <div class="order-items">
-            <div v-for="item in row.items?.slice(0, 2)" :key="item.id" class="order-item">
-              <el-image :src="item.product_image" fit="cover" class="item-image" />
-              <span class="item-name">{{ item.product_name }}</span>
+            <div v-for="item in row.items?.slice(0, 2)" :key="item.id" class="item">
+              <img :src="item.product_image" :alt="item.product_name" />
+              <span>{{ item.product_name }}</span>
             </div>
-            <span v-if="row.items?.length > 2" class="more">+{{ row.items.length - 2 }}件</span>
+            <span v-if="row.items?.length > 2" class="more">+{{ row.items.length - 2 }}</span>
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="金额" width="120">
+      <el-table-column label="金额" width="110">
+        <template #default="{ row }"><span class="price">¥{{ row.total_amount }}</span></template>
+      </el-table-column>
+      <el-table-column label="佣金" width="110">
         <template #default="{ row }">
-          <span class="price">¥{{ row.total_amount }}</span>
+          <span v-if="row.commission" class="commission">¥{{ row.commission }}</span>
+          <span v-else class="no-commission">未设置</span>
         </template>
       </el-table-column>
-      <el-table-column label="状态" width="120">
+      <el-table-column label="骑手" width="100">
         <template #default="{ row }">
-          <el-tag :type="getStatusType(row.status)">
-            {{ getStatusText(row.status) }}
-          </el-tag>
+          <span v-if="row.rider_id">骑手#{{ row.rider_id }}</span>
+          <span v-else class="no-rider">未派送</span>
         </template>
       </el-table-column>
-      <el-table-column prop="created_at" label="下单时间" width="180">
+      <el-table-column label="状态" width="100">
         <template #default="{ row }">
-          {{ formatDate(row.created_at) }}
+          <el-tag :type="getStatusType(row.status)" size="small">{{ getStatusText(row.status) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="250" fixed="right">
+      <el-table-column label="时间" width="160">
+        <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
+      </el-table-column>
+      <el-table-column label="操作" width="200" fixed="right">
         <template #default="{ row }">
-          <el-button type="primary" text size="small" @click="handleView(row)">
-            查看
-          </el-button>
-          <el-button
-            v-if="row.status === 1"
-            type="success"
-            text
-            size="small"
-            @click="handleShip(row)"
-          >
-            发货
-          </el-button>
-          <el-button
-            v-if="row.status === 0"
-            type="warning"
-            text
-            size="small"
-            @click="handleCancel(row)"
-          >
-            取消
-          </el-button>
-          <el-button type="danger" text size="small" @click="handleDelete(row)">
-            删除
-          </el-button>
+          <el-button type="primary" text size="small" @click="handleView(row)">详情</el-button>
+          <el-button type="warning" text size="small" @click="handleSetCommission(row)">设佣金</el-button>
         </template>
       </el-table-column>
     </el-table>
 
-    <!-- 分页 -->
-    <div class="pagination">
-      <el-pagination
-        v-model:current-page="currentPage"
-        :total="total"
-        :page-size="10"
-        layout="total, prev, pager, next"
-        @current-change="fetchOrders"
-      />
+    <div class="pagination" v-if="total > 10">
+      <el-pagination v-model:current-page="currentPage" :total="total" :page-size="10" layout="total, prev, pager, next" @current-change="fetchOrders" />
     </div>
 
-    <!-- 订单详情对话框 -->
-    <el-dialog
-      v-model="detailVisible"
-      title="订单详情"
-      width="700px"
-      class="order-detail-dialog"
-    >
-      <div class="order-detail" v-if="currentOrder">
-        <div class="detail-section">
-          <h3>订单信息</h3>
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="label">订单号：</span>
-              <span>{{ currentOrder.order_no }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">下单时间：</span>
-              <span>{{ formatDate(currentOrder.created_at) }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">订单状态：</span>
-              <el-tag :type="getStatusType(currentOrder.status)">
-                {{ getStatusText(currentOrder.status) }}
-              </el-tag>
-            </div>
-            <div class="info-item">
-              <span class="label">订单金额：</span>
-              <span class="price">¥{{ currentOrder.total_amount }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="detail-section" v-if="currentOrder.address">
-          <h3>收货地址</h3>
-          <p>{{ currentOrder.address.name }} {{ currentOrder.address.phone }}</p>
-          <p>{{ currentOrder.address.province }}{{ currentOrder.address.city }}{{ currentOrder.address.district }}{{ currentOrder.address.address }}</p>
-        </div>
-
-        <div class="detail-section">
-          <h3>商品信息</h3>
-          <el-table :data="currentOrder.items" style="width: 100%">
-            <el-table-column label="商品" min-width="200">
-              <template #default="{ row }">
-                <div class="product-info">
-                  <el-image :src="row.product_image" fit="cover" class="product-image" />
-                  <span>{{ row.product_name }}</span>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column prop="price" label="单价" width="120">
-              <template #default="{ row }">
-                <span class="price">¥{{ row.price }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="quantity" label="数量" width="100" />
-            <el-table-column label="小计" width="120">
-              <template #default="{ row }">
-                <span class="price">¥{{ (row.price * row.quantity).toFixed(2) }}</span>
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
-
-        <div class="detail-section" v-if="currentOrder.remark">
-          <h3>订单备注</h3>
-          <p>{{ currentOrder.remark }}</p>
+    <!-- 订单详情弹窗 -->
+    <el-dialog v-model="detailVisible" title="订单详情" width="640px">
+      <div v-if="currentOrder" class="detail-content">
+        <div class="detail-row"><span class="label">订单号</span><span>{{ currentOrder.order_no }}</span></div>
+        <div class="detail-row"><span class="label">用户</span><span>{{ currentOrder.user?.username }}</span></div>
+        <div class="detail-row"><span class="label">状态</span><el-tag :type="getStatusType(currentOrder.status)">{{ getStatusText(currentOrder.status) }}</el-tag></div>
+        <div class="detail-row"><span class="label">金额</span><span class="price">¥{{ currentOrder.total_amount }}</span></div>
+        <div class="detail-row"><span class="label">佣金</span><span>{{ currentOrder.commission ? '¥' + currentOrder.commission : '未设置' }}</span></div>
+        <div class="detail-row"><span class="label">骑手</span><span>{{ currentOrder.rider_id ? '骑手#' + currentOrder.rider_id : '未派送' }}</span></div>
+        <div class="detail-row"><span class="label">地址</span><span>{{ formatAddress(currentOrder.address) }}</span></div>
+        <h4 style="margin-top:20px">商品</h4>
+        <div v-for="item in currentOrder.items" :key="item.id" class="detail-item">
+          <img :src="item.product_image" />
+          <span>{{ item.product_name }} x{{ item.quantity }}</span>
+          <span class="price">¥{{ (item.price * item.quantity).toFixed(2) }}</span>
         </div>
       </div>
+    </el-dialog>
+
+    <!-- 设置佣金弹窗 -->
+    <el-dialog v-model="commissionVisible" title="设置佣金" width="400px">
+      <el-form v-if="commissionOrder">
+        <el-form-item label="订单号"><span>{{ commissionOrder.order_no }}</span></el-form-item>
+        <el-form-item label="订单金额"><span class="price">¥{{ commissionOrder.total_amount }}</span></el-form-item>
+        <el-form-item label="佣金金额">
+          <el-input-number v-model="commissionValue" :min="0" :precision="2" size="large" style="width:100%" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="commissionVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitCommission">确定</el-button>
+      </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Download } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import { adminApi } from '@/api/admin'
 
 const orders = ref<any[]>([])
@@ -197,253 +120,92 @@ const searchKeyword = ref('')
 const selectedStatus = ref<number | ''>('')
 const detailVisible = ref(false)
 const currentOrder = ref<any>(null)
+const commissionVisible = ref(false)
+const commissionOrder = ref<any>(null)
+const commissionValue = ref(0)
 
-onMounted(() => {
-  fetchOrders()
-})
+onMounted(() => fetchOrders())
 
 const fetchOrders = async () => {
   loading.value = true
   try {
-    const params: any = {
-      page: currentPage.value,
-      limit: 10,
-    }
-    if (searchKeyword.value) {
-      params.keyword = searchKeyword.value
-    }
-    if (selectedStatus.value !== '') {
-      params.status = selectedStatus.value
-    }
-
+    const params: any = { page: currentPage.value, limit: 10 }
+    if (searchKeyword.value) params.keyword = searchKeyword.value
+    if (selectedStatus.value !== '') params.status = selectedStatus.value
     const res: any = await adminApi.getOrders(params)
-    orders.value = res.items
-    total.value = res.total
-  } catch (error) {
-    console.error('获取订单失败:', error)
-  } finally {
-    loading.value = false
-  }
+    orders.value = res.items || []
+    total.value = res.total || 0
+  } catch (e) { console.error(e) }
+  finally { loading.value = false }
 }
 
-const handleSearch = () => {
-  currentPage.value = 1
-  fetchOrders()
+const handleSearch = () => { currentPage.value = 1; fetchOrders() }
+const handleReset = () => { searchKeyword.value = ''; selectedStatus.value = ''; handleSearch() }
+
+const handleView = (order: any) => { currentOrder.value = order; detailVisible.value = true }
+
+const handleSetCommission = (order: any) => {
+  commissionOrder.value = order
+  commissionValue.value = Number(order.commission) || 0
+  commissionVisible.value = true
 }
 
-const handleReset = () => {
-  searchKeyword.value = ''
-  selectedStatus.value = ''
-  handleSearch()
-}
-
-const handleView = (order: any) => {
-  currentOrder.value = order
-  detailVisible.value = true
-}
-
-const handleShip = async (order: any) => {
+const submitCommission = async () => {
   try {
-    await ElMessageBox.confirm('确定要标记为已发货吗？', '提示', { type: 'info' })
-    await adminApi.updateOrderStatus(order.id, 2)
-    ElMessage.success('发货成功')
+    await adminApi.setOrderCommission(commissionOrder.value.id, commissionValue.value)
+    ElMessage.success('佣金设置成功')
+    commissionVisible.value = false
     fetchOrders()
-  } catch {
-    // 取消
+  } catch (e: any) {
+    ElMessage.error(e.response?.data?.message || '设置失败')
   }
 }
 
-const handleCancel = async (order: any) => {
-  try {
-    await ElMessageBox.confirm('确定要取消该订单吗？', '提示', { type: 'warning' })
-    await adminApi.updateOrderStatus(order.id, 4)
-    ElMessage.success('订单已取消')
-    fetchOrders()
-  } catch {
-    // 取消
-  }
+const getStatusType = (s: number) => {
+  const map: Record<number, string> = { 0: 'warning', 1: '', 2: 'info', 3: 'success', 4: 'danger' }
+  return (map[s] || 'info') as any
 }
 
-const handleDelete = async (order: any) => {
-  try {
-    await ElMessageBox.confirm('确定要删除该订单吗？', '提示', { type: 'warning' })
-    await adminApi.deleteOrder(order.id)
-    ElMessage.success('删除成功')
-    fetchOrders()
-  } catch {
-    // 取消
-  }
+const getStatusText = (s: number) => {
+  const map: Record<number, string> = { 0: '待付款', 1: '已付款', 2: '已取货', 3: '已完成', 4: '已取消' }
+  return map[s] || '未知'
 }
 
-const handleExport = () => {
-  ElMessage.info('导出功能开发中...')
-}
-
-const getStatusType = (status: number) => {
-  const types: Record<number, string> = {
-    0: 'warning',
-    1: 'primary',
-    2: 'info',
-    3: 'success',
-    4: 'danger',
-  }
-  return types[status] || 'info'
-}
-
-const getStatusText = (status: number) => {
-  const texts: Record<number, string> = {
-    0: '待付款',
-    1: '已付款',
-    2: '已发货',
-    3: '已完成',
-    4: '已取消',
-  }
-  return texts[status] || '未知'
-}
-
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleString('zh-CN')
-}
+const formatTime = (d: string) => new Date(d).toLocaleString('zh-CN')
+const formatAddress = (a: any) => a ? `${a.province || ''}${a.city || ''}${a.district || ''}${a.address || ''}` : '-'
 </script>
 
 <style scoped lang="scss">
-.order-manage {
-  animation: fadeIn 0.5s ease;
-}
+$navy: #1a1f36;
+$gold: #c9a96e;
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-
-  h2 {
-    font-size: 20px;
-    color: #333;
-    font-weight: 600;
-  }
-}
+.order-manage { animation: fadeIn 0.4s ease; }
+.page-header { margin-bottom: 24px; h2 { font-size: 20px; color: $navy; font-weight: 600; } }
 
 .search-bar {
-  background: #fff;
-  padding: 20px;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
-
-  .search-input {
-    width: 250px;
-  }
-
-  .status-select {
-    width: 150px;
-  }
+  background: #fff; padding: 16px 20px; border-radius: 12px; margin-bottom: 20px;
+  display: flex; gap: 12px; align-items: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  .search-input { width: 240px; }
+  .status-select { width: 140px; }
 }
 
 .order-table {
-  background: #fff;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
-
-  .order-items {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    .order-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .item-image {
-      width: 40px;
-      height: 40px;
-      border-radius: 6px;
-    }
-
-    .item-name {
-      font-size: 13px;
-      max-width: 100px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .more {
-      color: #999;
-      font-size: 12px;
-    }
-  }
-
-  .price {
-    color: #ff6b6b;
-    font-weight: 600;
-  }
+  background: #fff; border-radius: 12px; overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  .order-items { display: flex; align-items: center; gap: 8px; .item { display: flex; align-items: center; gap: 6px; img { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; } span { font-size: 12px; } } .more { font-size: 12px; color: #999; } }
+  .price { color: #ff6b6b; font-weight: 600; }
+  .commission { color: #10b981; font-weight: 600; }
+  .no-commission { color: #999; font-size: 12px; }
+  .no-rider { color: #999; font-size: 12px; }
 }
 
-.pagination {
-  margin-top: 20px;
-  display: flex;
-  justify-content: flex-end;
+.pagination { margin-top: 20px; display: flex; justify-content: flex-end; }
+
+.detail-content {
+  .detail-row { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f5f5f5; .label { color: #999; min-width: 60px; } .price { color: #ff6b6b; font-weight: 600; } }
+  .detail-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; img { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; } span { font-size: 14px; } .price { margin-left: auto; color: #ff6b6b; font-weight: 600; } }
 }
 
-.order-detail-dialog {
-  .order-detail {
-    .detail-section {
-      margin-bottom: 24px;
-
-      h3 {
-        font-size: 16px;
-        color: #333;
-        margin-bottom: 16px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid #eee;
-      }
-
-      .info-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-
-        .info-item {
-          .label {
-            color: #999;
-            margin-right: 8px;
-          }
-        }
-      }
-
-      .product-info {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-
-        .product-image {
-          width: 50px;
-          height: 50px;
-          border-radius: 8px;
-        }
-      }
-
-      .price {
-        color: #ff6b6b;
-        font-weight: 600;
-      }
-    }
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 </style>

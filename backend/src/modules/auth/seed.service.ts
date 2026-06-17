@@ -20,7 +20,11 @@ export class SeedService implements OnModuleInit {
 
   private async seedAdmin() {
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@cake-mall.com';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) {
+      this.logger.warn('未设置 ADMIN_PASSWORD 环境变量，跳过管理员账号创建');
+      return;
+    }
 
     const existing = await this.userRepository.findOne({
       where: { email: adminEmail },
@@ -44,14 +48,20 @@ export class SeedService implements OnModuleInit {
   }
 
   private async seedRider() {
-    const riderEmail = 'rider@cake-mall.com';
+    const riderEmail = process.env.RIDER_EMAIL || 'rider@cake-mall.com';
+    const riderPassword = process.env.RIDER_PASSWORD;
+    if (!riderPassword) {
+      this.logger.warn('未设置 RIDER_PASSWORD 环境变量，跳过骑手账号创建');
+      return;
+    }
+
     const existing = await this.userRepository.findOne({
       where: { email: riderEmail },
     });
 
     if (!existing) {
       const salt = await bcrypt.genSalt();
-      const password_hash = await bcrypt.hash('rider123', salt);
+      const password_hash = await bcrypt.hash(riderPassword, salt);
 
       const rider = this.userRepository.create({
         username: 'rider',
@@ -61,7 +71,7 @@ export class SeedService implements OnModuleInit {
       });
 
       await this.userRepository.save(rider);
-      this.logger.log('骑手账号已创建: rider@cake-mall.com / rider123');
+      this.logger.log(`骑手账号已创建: ${riderEmail}`);
     }
   }
 }

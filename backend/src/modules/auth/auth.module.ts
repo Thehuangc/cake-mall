@@ -8,7 +8,10 @@ import { JwtStrategy } from './jwt.strategy';
 import { SeedService } from './seed.service';
 import { User } from '../user/user.entity';
 
-const jwtSecret = process.env.JWT_SECRET || 'fallback-dev-secret-change-in-production';
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret) {
+  throw new Error('JWT_SECRET 环境变量未设置');
+}
 
 @Module({
   imports: [
